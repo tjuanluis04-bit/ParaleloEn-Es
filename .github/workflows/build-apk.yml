@@ -26,7 +26,7 @@ jobs:
       - name: Crear proyecto Android
         run: |
           npx cap add android
-          cp -r resources/android/res/. android/app/src/main/res/
+          cp -r icons/res/. android/app/src/main/res/
           npx cap sync android
 
       - name: Compilar APK
