@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12161f">
+<title>Paralelo</title>
+<style>
+:root{--bg:#f3f5f8;--surface:#fff;--ink:#161a22;--mute:#667085;--line:#dde2ea;--acc:#0b7a75;--accbg:#e2f3f1;--orig:#161a22;
+--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#12161f;--surface:#1b212d;--ink:#e9ecf2;--mute:#8d97a8;--line:#2a3242;--acc:#6fd3c6;--accbg:#1a2c33;--orig:#f4f1ea}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans)}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.view{display:none;min-height:100%;flex-direction:column}.view.on{display:flex}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+header h1{font:700 22px var(--serif);margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.ib{width:44px;height:44px;border-radius:50%;font-size:20px;display:grid;place-items:center}.ib:active{background:var(--line)}
+.ib.on{background:var(--accbg);color:var(--acc)}
+main{padding:16px;flex:1;max-width:720px;width:100%;margin:0 auto}
+.card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.card:active{transform:scale(.985)}
+.card b{font:600 18px var(--serif);display:block}.card small{color:var(--mute)}
+.card p{margin:6px 0 0;font:15px var(--serif);color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty{text-align:center;color:var(--mute);padding:48px 16px}
+.fab{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));height:56px;padding:0 22px;border-radius:28px;background:var(--acc);color:var(--bg);font-weight:700;box-shadow:0 6px 18px #0004}
+/* lector */
+.pair{border-left:3px solid var(--acc);padding:2px 0 2px 14px;margin:0 0 22px}
+.o{font-family:var(--serif);color:var(--orig);line-height:1.4;margin:0}
+.t{font-family:var(--sans);color:var(--acc);line-height:1.4;margin:5px 0 0;font-size:.82em;transition:opacity .15s}
+.hide .t{opacity:0;user-select:none}.hide .pair.show .t{opacity:1}
+.hint{color:var(--mute);font-size:13px;text-align:center;margin:0 0 16px}
+/* editor */
+label{display:block;font-weight:600;font-size:14px;margin:14px 0 6px}
+input,select,textarea{width:100%;font:16px var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+textarea{min-height:160px;resize:vertical;line-height:1.5;font-family:var(--serif)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);border-color:transparent}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btn{height:48px;border-radius:12px;font-weight:700;padding:0 18px}
+.pri{background:var(--acc);color:var(--bg)}.sec{background:var(--accbg);color:var(--acc)}.dan{color:#d64545}
+.count{color:var(--mute);font-size:13px;margin-top:6px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#toast.on{opacity:1}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<section class="view on" id="home">
+  <header><h1>Paralelo</h1></header>
+  <main id="list"></main>
+  <button class="fab" id="new">+ Nuevo texto</button>
+</section>
+
+<section class="view" id="reader">
+  <header>
+    <button class="ib" data-go="home" aria-label="Volver">←</button>
+    <h1 id="rTitle"></h1>
+    <button class="ib" id="fsDn" aria-label="Letra más pequeña">A−</button>
+    <button class="ib" id="fsUp" aria-label="Letra más grande">A+</button>
+    <button class="ib" id="eye" aria-label="Ocultar español">👁</button>
+    <button class="ib" id="edit" aria-label="Editar">✎</button>
+  </header>
+  <main><p class="hint" id="hint"></p><div id="pairs"></div></main>
+</section>
+
+<section class="view" id="editor">
+  <header>
+    <button class="ib" id="back" aria-label="Volver">←</button>
+    <h1>Editar texto</h1>
+    <button class="btn pri" id="save">Guardar</button>
+  </header>
+  <main>
+    <label for="title">Título</label>
+    <input id="title" placeholder="Ej. Capítulo 1">
+    <label for="lang">Idioma original</label>
+    <select id="lang"></select>
+    <label for="src">Texto original (un renglón por línea)</label>
+    <textarea id="src" placeholder="Pega aquí el texto…"></textarea>
+    <label for="dst">Traducción al español (mismo orden)</label>
+    <textarea id="dst" placeholder="Escríbela o usa «Traducir líneas vacías»"></textarea>
+    <div class="count" id="count"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn sec" id="auto">Traducir líneas vacías</button>
+      <button class="btn dan" id="del">Eliminar</button>
+    </div>
+    <p class="count">La traducción automática necesita internet. Revísala: puede tener errores.</p>
+  </main>
+</section>
+
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const KEY='paralelo_v1';
+const LANGS={en:'Inglés',fr:'Francés',de:'Alemán',it:'Italiano',pt:'Portugués',ja:'Japonés',ko:'Coreano',zh:'Chino',ru:'Ruso'};
+const MM={zh:'zh-CN'};
+let db;
+try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!db){db={fs:20,texts:[{id:1,title:'Ejemplo',lang:'en',
+ src:"The sea was calm that morning.\nShe opened the window and smiled.\nNothing could spoil the day.",
+ dst:"El mar estaba tranquilo esa mañana.\nElla abrió la ventana y sonrió.\nNada podía arruinar el día."}]};}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+let cur=null,hidden=false;
+
+function go(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id===v));window.scrollTo(0,0)}
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{renderList();go(b.dataset.go)});
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2200)}
+const lines=s=>s.split('\n').map(x=>x.trim());
+
+function renderList(){
+  const l=$('#list');l.innerHTML='';
+  if(!db.texts.length){l.innerHTML='<div class="empty"><p>Aún no tienes textos.</p><p>Toca «Nuevo texto» y pega un párrafo en otro idioma.</p></div>';return}
+  db.texts.slice().reverse().forEach(t=>{
+    const b=document.createElement('button');b.className='card';
+    const n=lines(t.src).filter(Boolean).length;
+    b.innerHTML='<b></b><small></small><p></p>';
+    b.children[0].textContent=t.title||'Sin título';
+    b.children[1].textContent=(LANGS[t.lang]||t.lang)+' → Español · '+n+' renglones';
+    b.children[2].textContent=lines(t.src).find(Boolean)||'';
+    b.onclick=()=>openReader(t.id);l.appendChild(b);
+  });
+}
+
+function openReader(id){
+  cur=db.texts.find(t=>t.id===id);if(!cur)return;
+  $('#rTitle').textContent=cur.title||'Sin título';
+  const s=lines(cur.src),d=lines(cur.dst),box=$('#pairs');box.innerHTML='';
+  s.forEach((x,i)=>{if(!x)return;
+    const p=document.createElement('div');p.className='pair';
+    const o=document.createElement('p');o.className='o';o.textContent=x;
+    const t=document.createElement('p');t.className='t';t.textContent=d[i]||'—';
+    p.append(o,t);p.onclick=()=>{if(hidden)p.classList.toggle('show')};box.appendChild(p);
+  });
+  applyFs();applyHide();go('reader');
+}
+function applyFs(){$('#pairs').style.fontSize=db.fs+'px'}
+function applyHide(){
+  $('#pairs').classList.toggle('hide',hidden);$('#eye').classList.toggle('on',hidden);
+  $('#hint').textContent=hidden?'Toca un renglón para ver su traducción.':'';
+}
+$('#fsUp').onclick=()=>{db.fs=Math.min(34,db.fs+2);save();applyFs()};
+$('#fsDn').onclick=()=>{db.fs=Math.max(14,db.fs-2);save();applyFs()};
+$('#eye').onclick=()=>{hidden=!hidden;document.querySelectorAll('.pair.show').forEach(p=>p.classList.remove('show'));applyHide()};
+
+function openEditor(t){
+  cur=t||null;
+  $('#title').value=t?t.title:'';$('#lang').value=t?t.lang:'en';
+  $('#src').value=t?t.src:'';$('#dst').value=t?t.dst:'';
+  $('#del').style.display=t?'':'none';count();go('editor');
+}
+function count(){
+  const s=lines($('#src').value).filter(Boolean).length,d=lines($('#dst').value).filter(Boolean).length;
+  $('#count').textContent=s+' renglones originales · '+d+' traducidos';
+}
+$('#src').oninput=$('#dst').oninput=count;
+$('#new').onclick=()=>openEditor(null);
+$('#edit').onclick=()=>openEditor(cur);
+$('#back').onclick=()=>{cur&&db.texts.includes(cur)?openReader(cur.id):(renderList(),go('home'))};
+$('#lang').innerHTML=Object.entries(LANGS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+
+$('#save').onclick=()=>{
+  const src=$('#src').value.trim();
+  if(!src){toast('Escribe o pega el texto original');return}
+  const data={title:$('#title').value.trim()||'Sin título',lang:$('#lang').value,src,dst:$('#dst').value};
+  if(cur&&db.texts.includes(cur))Object.assign(cur,data);
+  else{cur={id:Date.now(),...data};db.texts.push(cur)}
+  save();toast('Guardado');openReader(cur.id);
+};
+$('#del').onclick=()=>{
+  if(!cur||!confirm('¿Eliminar este texto? No se puede deshacer.'))return;
+  db.texts=db.texts.filter(t=>t!==cur);cur=null;save();renderList();go('home');
+};
+
+$('#auto').onclick=async()=>{
+  const btn=$('#auto'),s=lines($('#src').value),d=lines($('#dst').value),lang=$('#lang').value;
+  const todo=s.map((x,i)=>x&&!d[i]?i:-1).filter(i=>i>=0);
+  if(!todo.length){toast('No hay líneas vacías por traducir');return}
+  btn.disabled=true;let done=0,fail=0;
+  for(const i of todo){
+    btn.textContent=`Traduciendo ${done+1}/${todo.length}…`;
+    try{
+      const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(s[i].slice(0,450))+'&langpair='+(MM[lang]||lang)+'|es');
+      const j=await r.json();const tx=j&&j.responseData&&j.responseData.translatedText;
+      if(!tx||j.responseStatus!=200)throw 0;
+      d[i]=tx;
+    }catch(e){fail++}
+    done++;
+  }
+  while(d.length<s.length)d.push('');
+  $('#dst').value=d.join('\n');count();
+  btn.disabled=false;btn.textContent='Traducir líneas vacías';
+  toast(fail?`${fail} líneas fallaron. Revisa tu conexión.`:'Traducción lista. Revísala.');
+};
+
+renderList();
+</script>
+</body>
+</html>
